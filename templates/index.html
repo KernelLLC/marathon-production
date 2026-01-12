@@ -1,0 +1,916 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Marathon Production</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        :root {
+            --bg: #F5F7FA;
+            --surface: #FFFFFF;
+            --surface-alt: #F0F2F5;
+            --border: #D1D5DB;
+            --text: #111827;
+            --text-secondary: #374151;
+            --text-muted: #6B7280;
+            --primary: #2563EB;
+            --primary-hover: #1D4ED8;
+            --primary-light: #DBEAFE;
+            --success: #059669;
+            --success-light: #D1FAE5;
+            --error: #DC2626;
+            --error-light: #FEE2E2;
+            --warning: #D97706;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 24px;
+        }
+        
+        /* Header */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 24px;
+        }
+        
+        .header h1 {
+            font-size: 28px;
+            font-weight: 700;
+            color: var(--text);
+        }
+        
+        .header .subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+        
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--primary-light);
+            border-radius: 20px;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--primary);
+        }
+        
+        .status-dot.success { background: var(--success); }
+        .status-dot.error { background: var(--error); }
+        .status-dot.warning { background: var(--warning); }
+        
+        .status-text {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--primary);
+        }
+        
+        /* Cards */
+        .card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            margin-bottom: 16px;
+        }
+        
+        .card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .card-header h2 {
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .card-body {
+            padding: 20px;
+        }
+        
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 16px;
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .form-col {
+            flex: 1;
+            min-width: 200px;
+        }
+        
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 6px;
+        }
+        
+        input, select, textarea {
+            width: 100%;
+            padding: 10px 14px;
+            font-size: 14px;
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            background: var(--surface);
+            color: var(--text);
+            transition: border-color 0.2s;
+        }
+        
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+        
+        textarea {
+            min-height: 200px;
+            font-family: 'SF Mono', Monaco, 'Courier New', monospace;
+            resize: vertical;
+        }
+        
+        .input-hint {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 4px;
+        }
+        
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 24px;
+            font-size: 14px;
+            font-weight: 600;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+        
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #047857;
+        }
+        
+        .btn-secondary {
+            background: var(--text-muted);
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: var(--text-secondary);
+        }
+        
+        .btn-danger {
+            background: var(--error);
+            color: white;
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        
+        .btn-row {
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-top: 20px;
+        }
+        
+        /* Serial Info */
+        .serial-info {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+        
+        .count-badge {
+            background: var(--surface-alt);
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+        
+        .detected-product {
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        
+        .detected-product strong {
+            color: var(--text);
+        }
+        
+        /* Log */
+        .log-container {
+            background: #1e1e1e;
+            border-radius: 6px;
+            padding: 16px;
+            max-height: 300px;
+            overflow-y: auto;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 13px;
+        }
+        
+        .log-entry {
+            padding: 4px 0;
+            color: #d4d4d4;
+        }
+        
+        .log-entry.success { color: #4ade80; }
+        .log-entry.error { color: #f87171; }
+        .log-entry.warning { color: #fbbf24; }
+        
+        /* Results Table */
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        
+        .results-table th,
+        .results-table td {
+            padding: 10px 12px;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .results-table th {
+            background: var(--surface-alt);
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+        
+        .status-pass {
+            color: var(--success);
+            font-weight: 600;
+        }
+        
+        .status-fail {
+            color: var(--error);
+            font-weight: 600;
+        }
+        
+        /* Labels Preview */
+        .labels-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 16px;
+            margin-top: 16px;
+        }
+        
+        .label-card {
+            background: white;
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px;
+            text-align: center;
+        }
+        
+        .label-card img {
+            max-width: 100%;
+            border-radius: 4px;
+        }
+        
+        .label-serial {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 8px;
+        }
+        
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .modal-overlay.active {
+            display: flex;
+        }
+        
+        .modal {
+            background: var(--surface);
+            border-radius: 12px;
+            max-width: 500px;
+            width: 90%;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+        
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+        
+        .modal-header h3 {
+            font-size: 18px;
+        }
+        
+        .modal-body {
+            padding: 20px;
+        }
+        
+        .modal-footer {
+            padding: 16px 20px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+        
+        /* Tabs */
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 20px;
+        }
+        
+        .tab {
+            padding: 12px 20px;
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--text-muted);
+            border: none;
+            background: none;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -1px;
+        }
+        
+        .tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        /* Footer stats */
+        .footer-stats {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            font-size: 13px;
+            color: var(--text-secondary);
+        }
+        
+        .footer-links a {
+            color: var(--primary);
+            text-decoration: none;
+            margin-left: 16px;
+        }
+        
+        .footer-links a:hover {
+            text-decoration: underline;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .container {
+                padding: 16px;
+            }
+            
+            .header {
+                flex-direction: column;
+                gap: 12px;
+            }
+            
+            .form-row {
+                flex-direction: column;
+            }
+            
+            .btn-row {
+                flex-direction: column;
+            }
+            
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <div class="header">
+            <div>
+                <h1>Marathon Production</h1>
+                <p class="subtitle">Today: <span id="todaySerials">{{ stats.serials }}</span> serials processed</p>
+            </div>
+            <div class="status-badge" id="statusBadge">
+                <span class="status-dot" id="statusDot"></span>
+                <span class="status-text" id="statusText">Ready</span>
+            </div>
+        </div>
+        
+        <!-- Credentials Card -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Odoo Credentials</h2>
+            </div>
+            <div class="card-body">
+                <div class="form-row">
+                    <div class="form-col">
+                        <label for="odooEmail">Email</label>
+                        <input type="email" id="odooEmail" placeholder="your@email.com">
+                    </div>
+                    <div class="form-col">
+                        <label for="odooPassword">Password</label>
+                        <input type="password" id="odooPassword" placeholder="••••••••">
+                    </div>
+                </div>
+                <p class="input-hint">⚠️ Credentials are used only for this session and not stored on the server.</p>
+            </div>
+        </div>
+        
+        <!-- Configuration Card -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Configuration</h2>
+            </div>
+            <div class="card-body">
+                <div class="form-row">
+                    <div class="form-col">
+                        <label for="productSelect">Product Override</label>
+                        <select id="productSelect">
+                            <option value="">Auto-detect from serial</option>
+                            {% for device in devices %}
+                            <option value="{{ device }}">{{ device }}</option>
+                            {% endfor %}
+                        </select>
+                        <p class="input-hint">Leave empty to auto-detect from serial prefix</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Serial Input Card -->
+        <div class="card">
+            <div class="card-header">
+                <h2>Serial Numbers</h2>
+            </div>
+            <div class="card-body">
+                <div class="serial-info">
+                    <span class="detected-product">Detected: <strong id="detectedProduct">—</strong></span>
+                    <span class="count-badge" id="serialCount">0 items</span>
+                </div>
+                <textarea id="serialsInput" placeholder="Paste serial numbers here, one per line..."></textarea>
+                
+                <div class="btn-row">
+                    <button class="btn btn-primary" id="runBtn" onclick="runMarathon()">
+                        ▶ Run Marathon
+                    </button>
+                    <button class="btn btn-secondary" id="verifyBtn" onclick="verifySerials()">
+                        Verify
+                    </button>
+                    <button class="btn btn-success" id="labelsBtn" onclick="generateLabels()">
+                        Generate Labels
+                    </button>
+                    <button class="btn btn-danger" onclick="clearSerials()">
+                        Clear
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Log Card -->
+        <div class="card" id="logCard" style="display: none;">
+            <div class="card-header">
+                <h2>Activity Log</h2>
+            </div>
+            <div class="card-body">
+                <div class="log-container" id="logContainer"></div>
+            </div>
+        </div>
+        
+        <!-- Results Card -->
+        <div class="card" id="resultsCard" style="display: none;">
+            <div class="card-header">
+                <h2>Verification Results</h2>
+            </div>
+            <div class="card-body">
+                <div id="resultsSummary" style="margin-bottom: 16px;"></div>
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th>Serial</th>
+                            <th>Status</th>
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody id="resultsBody"></tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Labels Card -->
+        <div class="card" id="labelsCard" style="display: none;">
+            <div class="card-header">
+                <h2>QR Labels</h2>
+            </div>
+            <div class="card-body">
+                <button class="btn btn-primary" onclick="downloadLabelsPDF()">
+                    📥 Download PDF for Printing
+                </button>
+                <div class="labels-grid" id="labelsGrid"></div>
+            </div>
+        </div>
+        
+        <!-- Footer Stats -->
+        <div class="footer-stats">
+            <span>Today: <strong id="footerSerials">{{ stats.serials }}</strong> serials, <strong id="footerBatches">{{ stats.batches }}</strong> batches</span>
+            <div class="footer-links">
+                <a href="#" onclick="showHistory()">History</a>
+                <a href="#" onclick="showStats()">Stats</a>
+            </div>
+        </div>
+    </div>
+    
+    <!-- History Modal -->
+    <div class="modal-overlay" id="historyModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Batch History</h3>
+            </div>
+            <div class="modal-body" id="historyBody">
+                Loading...
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal('historyModal')">Close</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Socket.IO connection
+        const socket = io();
+        
+        // State
+        let currentSerials = [];
+        
+        // Socket handlers
+        socket.on('connect', () => {
+            updateStatus('Connected', 'success');
+        });
+        
+        socket.on('disconnect', () => {
+            updateStatus('Disconnected', 'error');
+        });
+        
+        socket.on('status', (data) => {
+            addLog(data.message, data.type);
+            updateStatus(data.message.substring(0, 50), data.type);
+        });
+        
+        socket.on('marathon_complete', (data) => {
+            document.getElementById('runBtn').disabled = false;
+            if (data.success) {
+                updateStatus('Marathon completed!', 'success');
+                refreshStats();
+            } else {
+                updateStatus('Marathon failed', 'error');
+            }
+        });
+        
+        socket.on('verify_complete', (data) => {
+            document.getElementById('verifyBtn').disabled = false;
+            displayResults(data);
+        });
+        
+        // UI Functions
+        function updateStatus(message, type = 'info') {
+            const dot = document.getElementById('statusDot');
+            const text = document.getElementById('statusText');
+            const badge = document.getElementById('statusBadge');
+            
+            dot.className = 'status-dot ' + type;
+            text.textContent = message;
+            
+            if (type === 'success') {
+                badge.style.background = 'var(--success-light)';
+                text.style.color = 'var(--success)';
+            } else if (type === 'error') {
+                badge.style.background = 'var(--error-light)';
+                text.style.color = 'var(--error)';
+            } else {
+                badge.style.background = 'var(--primary-light)';
+                text.style.color = 'var(--primary)';
+            }
+        }
+        
+        function addLog(message, type = 'info') {
+            const container = document.getElementById('logContainer');
+            const card = document.getElementById('logCard');
+            card.style.display = 'block';
+            
+            const entry = document.createElement('div');
+            entry.className = 'log-entry ' + type;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            container.appendChild(entry);
+            container.scrollTop = container.scrollHeight;
+        }
+        
+        // Serial handling
+        document.getElementById('serialsInput').addEventListener('input', function() {
+            const text = this.value;
+            const lines = text.split('\n').filter(l => l.trim());
+            currentSerials = lines;
+            
+            document.getElementById('serialCount').textContent = `${lines.length} item${lines.length !== 1 ? 's' : ''}`;
+            
+            // Detect product from first serial
+            if (lines.length > 0) {
+                fetch('/api/detect-product', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({serial: lines[0]})
+                })
+                .then(r => r.json())
+                .then(data => {
+                    document.getElementById('detectedProduct').textContent = data.product || '—';
+                });
+            } else {
+                document.getElementById('detectedProduct').textContent = '—';
+            }
+        });
+        
+        function clearSerials() {
+            document.getElementById('serialsInput').value = '';
+            document.getElementById('serialCount').textContent = '0 items';
+            document.getElementById('detectedProduct').textContent = '—';
+            document.getElementById('logCard').style.display = 'none';
+            document.getElementById('resultsCard').style.display = 'none';
+            document.getElementById('labelsCard').style.display = 'none';
+            document.getElementById('logContainer').innerHTML = '';
+            currentSerials = [];
+        }
+        
+        // Marathon
+        function runMarathon() {
+            const serials = document.getElementById('serialsInput').value;
+            const product = document.getElementById('productSelect').value;
+            const email = document.getElementById('odooEmail').value;
+            const password = document.getElementById('odooPassword').value;
+            
+            if (!serials.trim()) {
+                alert('Please enter serial numbers');
+                return;
+            }
+            
+            if (!email || !password) {
+                alert('Please enter Odoo credentials');
+                return;
+            }
+            
+            document.getElementById('runBtn').disabled = true;
+            document.getElementById('logContainer').innerHTML = '';
+            document.getElementById('logCard').style.display = 'block';
+            
+            socket.emit('run_marathon', {
+                serials: serials,
+                product: product,
+                odoo_email: email,
+                odoo_password: password
+            });
+        }
+        
+        // Verify
+        function verifySerials() {
+            const serials = document.getElementById('serialsInput').value;
+            
+            if (!serials.trim()) {
+                alert('Please enter serial numbers');
+                return;
+            }
+            
+            document.getElementById('verifyBtn').disabled = true;
+            
+            socket.emit('verify_serials', {
+                serials: serials
+            });
+        }
+        
+        function displayResults(data) {
+            const card = document.getElementById('resultsCard');
+            const summary = document.getElementById('resultsSummary');
+            const body = document.getElementById('resultsBody');
+            
+            card.style.display = 'block';
+            
+            if (data.summary) {
+                summary.innerHTML = `
+                    <strong>Summary:</strong> 
+                    <span class="status-pass">${data.summary.passed} passed</span> / 
+                    <span class="status-fail">${data.summary.failed} failed</span> 
+                    (${data.summary.total} total)
+                `;
+            }
+            
+            body.innerHTML = '';
+            for (const [serial, status] of Object.entries(data.results)) {
+                const isPassed = status === 'PASS';
+                body.innerHTML += `
+                    <tr>
+                        <td><code>${serial}</code></td>
+                        <td class="${isPassed ? 'status-pass' : 'status-fail'}">${isPassed ? '✓ PASS' : '✗ FAIL'}</td>
+                        <td>${status}</td>
+                    </tr>
+                `;
+            }
+        }
+        
+        // Labels
+        function generateLabels() {
+            const serials = document.getElementById('serialsInput').value;
+            const lines = serials.split('\n').filter(l => l.trim());
+            
+            if (lines.length === 0) {
+                alert('Please enter serial numbers');
+                return;
+            }
+            
+            fetch('/api/generate-labels', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({serials: lines})
+            })
+            .then(r => r.json())
+            .then(data => {
+                const card = document.getElementById('labelsCard');
+                const grid = document.getElementById('labelsGrid');
+                
+                card.style.display = 'block';
+                grid.innerHTML = '';
+                
+                for (const label of data.labels) {
+                    grid.innerHTML += `
+                        <div class="label-card">
+                            <img src="data:image/png;base64,${label.image}" alt="${label.serial}">
+                            <div class="label-serial">${label.serial}</div>
+                        </div>
+                    `;
+                }
+            });
+        }
+        
+        function downloadLabelsPDF() {
+            const serials = document.getElementById('serialsInput').value;
+            const lines = serials.split('\n').filter(l => l.trim());
+            
+            if (lines.length === 0) {
+                alert('Please enter serial numbers');
+                return;
+            }
+            
+            // Create form and submit
+            const form = document.createElement('form');
+            form.method = 'POST';
+            form.action = '/api/download-labels-pdf';
+            form.style.display = 'none';
+            
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'serials';
+            input.value = JSON.stringify(lines);
+            form.appendChild(input);
+            
+            document.body.appendChild(form);
+            
+            // Use fetch instead for JSON
+            fetch('/api/download-labels-pdf', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({serials: lines})
+            })
+            .then(r => r.blob())
+            .then(blob => {
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = `labels_${new Date().toISOString().slice(0,10)}.pdf`;
+                a.click();
+                URL.revokeObjectURL(url);
+            });
+        }
+        
+        // History & Stats
+        function showHistory() {
+            document.getElementById('historyModal').classList.add('active');
+            
+            fetch('/api/history')
+            .then(r => r.json())
+            .then(data => {
+                const body = document.getElementById('historyBody');
+                if (data.length === 0) {
+                    body.innerHTML = '<p>No batch history yet.</p>';
+                    return;
+                }
+                
+                body.innerHTML = data.map(batch => `
+                    <div style="padding: 12px; border-bottom: 1px solid var(--border);">
+                        <strong>${batch.success ? '✓' : '✗'} ${batch.product}</strong>
+                        <span style="color: var(--text-muted);"> - ${batch.count} serials</span>
+                        <br>
+                        <small style="color: var(--text-muted);">${new Date(batch.timestamp).toLocaleString()}</small>
+                    </div>
+                `).join('');
+            });
+        }
+        
+        function showStats() {
+            fetch('/api/stats')
+            .then(r => r.json())
+            .then(data => {
+                alert(`Today: ${data.today.serials} serials, ${data.today.batches} batches\nAll time: ${data.all.total_serials} serials`);
+            });
+        }
+        
+        function closeModal(id) {
+            document.getElementById(id).classList.remove('active');
+        }
+        
+        function refreshStats() {
+            fetch('/api/stats')
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('todaySerials').textContent = data.today.serials;
+                document.getElementById('footerSerials').textContent = data.today.serials;
+                document.getElementById('footerBatches').textContent = data.today.batches;
+            });
+        }
+        
+        // Click outside modal to close
+        document.querySelectorAll('.modal-overlay').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                }
+            });
+        });
+    </script>
+</body>
+</html>

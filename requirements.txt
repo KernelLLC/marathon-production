@@ -1,0 +1,10 @@
+# Marathon Production - Web Dependencies
+flask==3.0.0
+flask-socketio==5.3.6
+eventlet==0.34.2
+gunicorn==21.2.0
+playwright==1.40.0
+Pillow==10.1.0
+qrcode==7.4.2
+requests==2.31.0
+reportlab==4.0.7
