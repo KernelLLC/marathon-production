@@ -19,13 +19,9 @@ import threading
 import queue
 
 # Browser automation (optional - disabled for Railway)
-try:
-    from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
-    PLAYWRIGHT_AVAILABLE = True
-except ImportError:
-    PLAYWRIGHT_AVAILABLE = False
-    sync_playwright = None
-    PlaywrightTimeoutError = Exception
+# Browser automation
+from playwright.sync_api import sync_playwright, TimeoutError as PlaywrightTimeoutError
+PLAYWRIGHT_AVAILABLE = True
 
 # QR Code generation
 from PIL import Image, ImageDraw, ImageFont
