@@ -232,32 +232,51 @@ def validate_serials(serials: List[str]) -> Dict:
     return results
 
 
-def detect_product(serial: str) -> Optional[str]:
-    """Detect product from serial number prefix."""
-    serial_upper = serial.upper()
+def detect_product(serial: str) -> tuple[Optional[str], bool]:
+    """
+    Detect product from serial number prefix.
+    Returns (product_name, needs_color_selection)
+    """
+    if not serial:
+        return None, False
     
-    patterns = [
+    serial_upper = serial.upper()
+    first_char = serial_upper[0] if serial_upper else ''
+    
+    # Single letter prefix patterns (need to check first character)
+    single_letter_patterns = {
+        'W': ('HEX-W', False),      # W*** → HEX-W
+        'X': ('HEX-X', True),       # X*** → HEX-X (needs color: R, G, or B)
+        'N': ('HEX-N', False),      # N*** → HEX-N
+        'P': ('HEX-P', False),      # P*** → HEX-P
+        'G': ('HEX-G', False),      # G*** → HEX-G
+        'M': ('HEX-M', False),      # M*** → HEX-M
+        'F': ('HEX-F', False),      # F*** → HEX-F
+    }
+    
+    # Check single letter patterns first
+    if first_char in single_letter_patterns:
+        return single_letter_patterns[first_char]
+    
+    # Multi-character prefix patterns (check in order of specificity)
+    multi_patterns = [
         ("HEX-MOD-DHT", ["HEX-MOD-DHT", "HEXMODDHT"]),
         ("HEX-MOD-LHT", ["HEX-MOD-LHT", "HEXMODLHT"]),
         ("HEX-MOD-SHT", ["HEX-MOD-SHT", "HEXMODSHT"]),
         ("HEX-MOD-SDP", ["HEX-MOD-SDP", "HEXMODSDP"]),
         ("HEX-MOD-ULT", ["HEX-MOD-ULT", "HEXMODULT"]),
-        ("HEX-T-C", ["HEX-T-C", "HEXTC"]),
-        ("HEX-T-R", ["HEX-T-R", "HEXTR"]),
-        ("HEX-P", ["HEX-P", "HEXP"]),
-        ("HEX-N", ["HEX-N", "HEXN"]),
-        ("HEX-W", ["HEX-W", "HEXW"]),
-        ("HEX-G", ["HEX-G", "HEXG"]),
-        ("HEX-L-S", ["HEX-L-S", "HEXLS"]),
-        ("HEX-L-Z", ["HEX-L-Z", "HEXLZ"]),
+        ("HEX-T-C", ["HEX-T-C", "HEXTC", "TC"]),
+        ("HEX-T-R", ["HEX-T-R", "HEXTR", "TR"]),
+        ("HEX-L-S", ["HEX-L-S", "HEXLS", "LS"]),
+        ("HEX-L-Z", ["HEX-L-Z", "HEXLZ", "LZ"]),
     ]
     
-    for product, prefixes in patterns:
+    for product, prefixes in multi_patterns:
         for prefix in prefixes:
             if serial_upper.startswith(prefix):
-                return product
+                return product, False
     
-    return None
+    return None, False
 
 
 # =============================================================================
@@ -609,8 +628,12 @@ def api_detect_product():
     """Detect product from serial."""
     data = request.json
     serial = data.get('serial', '')
-    product = detect_product(serial)
-    return jsonify({'product': product})
+    product, needs_color = detect_product(serial)
+    return jsonify({
+        'product': product,
+        'needs_color': needs_color,
+        'colors': ['R', 'G', 'B'] if needs_color else None
+    })
 
 
 @app.route('/api/validate-serials', methods=['POST'])
